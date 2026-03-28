@@ -1,130 +1,179 @@
+// YouTube MP4 - Rock Lee 🩻
+// Créditos: Devjxssex + upgrade by The Carlos 👑
+
 import { spawn } from "child_process"
 import fs from "fs"
 import fetch from "node-fetch"
 import yts from "yt-search"
 import Jimp from "jimp"
 
-const name = "Descargas - black clover"
+const NAME = "Descargas - Rock Lee 🩻"
 
+// 🖼️ Optimizar imagen
 async function resizeImage(buffer, size = 300) {
   const img = await Jimp.read(buffer)
-  return img.resize(size, size).getBufferAsync(Jimp.MIME_JPEG)
+  return img.resize(size, size).quality(80).getBufferAsync(Jimp.MIME_JPEG)
 }
 
+// ⚙️ Core
 const yt = {
-  static: Object.freeze({
-    baseUrl: "https://cnv.cx",
-    headers: {
-      "accept-encoding": "gzip, deflate, br, zstd",
-      origin: "https://frame.y2meta-uk.com",
-      "user-agent": "Mozilla/5.0"
-    }
-  }),
-  resolveConverterPayload(link, f = "720p") {
-    if (!["144p", "240p", "360p", "720p", "1080p"].includes(f)) throw Error("Formato inválido")
+  base: "https://cnv.cx",
+  headers: {
+    "accept-encoding": "gzip, deflate, br",
+    origin: "https://frame.y2meta-uk.com",
+    "user-agent": "Mozilla/5.0"
+  },
+
+  formats: ["144p", "240p", "360p", "720p", "1080p"],
+
+  buildPayload(link, format) {
+    if (!this.formats.includes(format)) throw Error("Formato inválido")
+
     return {
       link,
       format: "mp4",
-      videoQuality: f.replace("p", ""),
+      videoQuality: format.replace("p", ""),
       filenameStyle: "pretty",
       vCodec: "h264"
     }
   },
-  sanitizeFileName(n) {
-    const ext = n.match(/\.[^.]+$/)[0]
-    const base = n.replace(ext, "").replace(/[^A-Za-z0-9]/g, "_").replace(/_+/g, "_").toLowerCase()
-    return base + ext
+
+  cleanName(name = "video.mp4") {
+    return name
+      .replace(/[^a-zA-Z0-9]/g, "_")
+      .replace(/_+/g, "_")
+      .toLowerCase() + ".mp4"
   },
-  async getBuffer(u) {
-    const r = await fetch(u)
-    if (!r.ok) throw Error("No se pudo descargar")
-    return Buffer.from(await r.arrayBuffer())
-  },
+
   async getKey() {
-    const r = await fetch(this.static.baseUrl + "/v2/sanity/key", { headers: this.static.headers })
+    const r = await fetch(this.base + "/v2/sanity/key", { headers: this.headers })
     return r.json()
   },
-  async convert(u, f) {
+
+  async convert(url, format) {
     const { key } = await this.getKey()
-    const payload = this.resolveConverterPayload(u, f)
-    const r = await fetch(this.static.baseUrl + "/v2/converter", {
-      method: "post",
-      headers: { ...this.static.headers, key },
-      body: new URLSearchParams(payload)
+
+    const r = await fetch(this.base + "/v2/converter", {
+      method: "POST",
+      headers: { ...this.headers, key },
+      body: new URLSearchParams(this.buildPayload(url, format))
     })
+
     return r.json()
   },
-  async download(u, f) {
-    const { url, filename } = await this.convert(u, f)
-    const buffer = await this.getBuffer(url)
-    return { buffer, fileName: this.sanitizeFileName(filename) }
+
+  async download(url, format) {
+    const data = await this.convert(url, format)
+
+    if (!data?.url) throw Error("No se pudo obtener el video")
+
+    const res = await fetch(data.url)
+    if (!res.ok) throw Error("Error descargando")
+
+    const buffer = Buffer.from(await res.arrayBuffer())
+
+    return {
+      buffer,
+      fileName: this.cleanName(data.filename)
+    }
   }
 }
 
-async function convertToFast(buffer) {
-  const tempIn = "./temp_in.mp4"
-  const tempOut = "./temp_out.mp4"
-  fs.writeFileSync(tempIn, buffer)
+// ⚡ Optimizar video
+async function fastVideo(buffer) {
+  const inFile = "./tmp_in.mp4"
+  const outFile = "./tmp_out.mp4"
+
+  fs.writeFileSync(inFile, buffer)
+
   await new Promise((res, rej) => {
-    const ff = spawn("ffmpeg", ["-i", tempIn, "-c", "copy", "-movflags", "faststart", tempOut])
-    ff.on("close", c => c === 0 ? res() : rej())
+    spawn("ffmpeg", ["-i", inFile, "-c", "copy", "-movflags", "faststart", outFile])
+      .on("close", code => code === 0 ? res() : rej())
   })
-  const out = fs.readFileSync(tempOut)
-  fs.unlinkSync(tempIn)
-  fs.unlinkSync(tempOut)
+
+  const out = fs.readFileSync(outFile)
+  fs.unlinkSync(inFile)
+  fs.unlinkSync(outFile)
+
   return out
 }
 
+// 🎯 Handler
 const handler = async (m, { conn, args }) => {
-  if (!args[0]) return m.reply("🎬 Pasa el link o nombre")
-  await m.react("⌛")
+  try {
+    if (!args[0]) return m.reply("🎬 Pasa link o nombre")
 
-  let url, title, thumbnail
+    await m.react("⌛")
 
-  if (args[0].includes("youtu")) {
-    const info = await yts({ videoId: args[0].split("v=")[1] })
-    url = args[0]
-    title = info.title
-    thumbnail = info.thumbnail
-  } else {
-    const search = await yts.search(args.join(" "))
-    if (!search.videos.length) return m.reply("❌ No encontrado")
-    const v = search.videos[0]
-    url = v.url
-    title = v.title
-    thumbnail = v.thumbnail
-  }
+    let url, title, thumbnail
 
-  const thumb = await resizeImage(await (await fetch(thumbnail)).buffer())
-  const res3 = await fetch("https://qu.ax/xCgVW.jpg")
-  const thumb3 = Buffer.from(await res3.arrayBuffer())
+    // 🔗 Detectar link o búsqueda
+    if (/youtu/.test(args[0])) {
+      const id =
+        args[0].split("v=")[1]?.split("&")[0] ||
+        args[0].split("/").pop()
 
-  const fkontak = {
-    key: { fromMe: false, participant: "0@s.whatsapp.net" },
-    message: {
-      documentMessage: {
-        title: `🎬「 ${title} 」`,
-        fileName: name,
-        jpegThumbnail: thumb3
+      const info = await yts({ videoId: id })
+
+      url = `https://youtube.com/watch?v=${id}`
+      title = info.title
+      thumbnail = info.thumbnail
+    } else {
+      const search = await yts.search(args.join(" "))
+      if (!search.videos.length) return m.reply("❌ No encontrado")
+
+      const v = search.videos[0]
+      url = v.url
+      title = v.title
+      thumbnail = v.thumbnail
+    }
+
+    // 🖼️ Thumbnail
+    const thumb = await resizeImage(
+      Buffer.from(await (await fetch(thumbnail)).arrayBuffer())
+    )
+
+    // 📦 Fake contacto
+    const fkontak = {
+      key: { fromMe: false, participant: "0@s.whatsapp.net" },
+      message: {
+        documentMessage: {
+          title: `🎬 ${title}`,
+          fileName: NAME,
+          jpegThumbnail: thumb
+        }
       }
     }
+
+    // 🎥 Descargar
+    let { buffer, fileName } = await yt.download(url, "720p")
+
+    // ⚡ Optimizar
+    buffer = await fastVideo(buffer)
+
+    // 🛡️ Límite (opcional)
+    if (buffer.length > 80 * 1024 * 1024) {
+      throw Error("Video muy pesado")
+    }
+
+    await conn.sendMessage(
+      m.chat,
+      {
+        video: buffer,
+        mimetype: "video/mp4",
+        fileName,
+        jpegThumbnail: thumb
+      },
+      { quoted: fkontak }
+    )
+
+    await m.react("✅")
+
+  } catch (e) {
+    console.error(e)
+    await m.react("❌")
+    m.reply("❌ Error al descargar video")
   }
-
-  let { buffer, fileName } = await yt.download(url, "720p")
-  buffer = await convertToFast(buffer)
-
-  await conn.sendMessage(
-    m.chat,
-    {
-      video: buffer,
-      mimetype: "video/mp4",
-      fileName,
-      jpegThumbnail: thumb
-    },
-    { quoted: fkontak }
-  )
-
-  await m.react("✅")
 }
 
 handler.command = ["ytmp4"]
