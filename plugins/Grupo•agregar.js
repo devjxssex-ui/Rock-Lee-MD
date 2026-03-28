@@ -1,31 +1,52 @@
-var handler = async (m, { conn, args, text, usedPrefix, command }) => {
+const handler = async (m, { conn, args, text, usedPrefix, command }) => {
+    // Miniatura del bot para branding
+    const pp = 'https://i.imgur.com/vWnsjh8.jpg';
+    
+    // Determinar a quién añadir
+    let who = m.isGroup
+        ? m.mentionedJid?.[0] || m.quoted?.sender || text
+        : m.chat;
 
-let who 
-if (m.isGroup) who = m.mentionedJid[0] ? m.mentionedJid[0] : m.quoted ? m.quoted.sender : text
-else who = m.chat
-let name = await conn.getName(m.sender)        
-let user = global.db.data.users[who]
-let nom = conn.getName(m.sender)
-if (!global.db.data.settings[conn.user.jid].restrict) return conn.reply(m.chat, `🚩 *Este comando está deshabilitado por mi creador*`, m) 
-if (!text) return m.reply(`🍟 Ingrese el número de la persona que quieres añadir a este grupo.\n\n🚩 Ejemplo:\n*${usedPrefix + command}* 66666666666`)
-if (text.includes('+')) return m.reply(`🍟 Ingrese el número todo junto sin el *(+)*`)
-if (isNaN(text)) return m.reply(`🍟 El número debe ser solo en dígitos`)
+    if (!global.db.data.settings[conn.user.jid].restrict) 
+        return conn.reply(m.chat, `🚩 *Este comando está deshabilitado por mi creador*`, m);
 
-let group = m.chat
-let link = 'https://chat.whatsapp.com/' + await conn.groupInviteCode(group)
-let jid = text.replace(/\D/g, '') + '@s.whatsapp.net'
+    if (!text) 
+        return m.reply(`🍟 Ingrese el número de la persona que quieres añadir al grupo.\n\n🚩 Ejemplo:\n*${usedPrefix + command} 5556667777*`);
 
-await conn.reply(jid, `*🍟 Hola! soy Asta, una persona te ha invitado a su grupo.*\n\n*Link de invitación:*\n${link}`, m, { mentions: [m.sender] })
-let fecha = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
-let tiempo = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-await m.reply(`🍟 *Enviando la invitación al privado de ${nom}*\n\n*📅 ${fecha}*\n⏰ *${tiempo}*`) 
+    if (text.includes('+')) 
+        return m.reply(`🍟 Ingrese el número todo junto, sin el *(+)*`);
 
-}
-handler.help = ['add']
-handler.tags = ['grupo']
-handler.command = ['add', 'agregar', 'añadir']
-handler.group = true
-handler.admin = true
-handler.fail = null
+    if (isNaN(text)) 
+        return m.reply(`🍟 El número debe contener solo dígitos`);
 
-export default handler
+    // Preparar datos
+    let group = m.chat;
+    let link = 'https://chat.whatsapp.com/' + await conn.groupInviteCode(group);
+    let jid = text.replace(/\D/g, '') + '@s.whatsapp.net';
+    let nom = await conn.getName(m.sender);
+    let fecha = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    let tiempo = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    // Enviar invitación privada al usuario
+    await conn.reply(jid, 
+        `🩻 *ROCK LEE BOT 🩻* 🥷\n\n🍟 ¡Hola! ${nom} te ha invitado a un grupo.\n\n*Link de invitación:*\n${link}`, 
+        m, 
+        { contextInfo: { externalAdReply: { title: '•🩻 ROCK LEE BOT 🩻•', body: 'Invitación de grupo', thumbnail: pp, sourceUrl: 'https://t.me/RockLeeBot' } }, mentions: [m.sender] }
+    );
+
+    // Confirmación en el grupo
+    await m.reply(
+        `🍟 *Enviando invitación al privado de ${nom}*\n\n📅 *${fecha}*\n⏰ *${tiempo}*`,
+        m,
+        { contextInfo: { externalAdReply: { title: '•🩻 ROCK LEE BOT 🩻•', body: 'Sistema de invitación', thumbnail: pp, sourceUrl: 'https://t.me/RockLeeBot' } } }
+    );
+};
+
+handler.help = ['add'];
+handler.tags = ['grupo'];
+handler.command = ['add', 'agregar', 'añadir'];
+handler.group = true;
+handler.admin = true;
+handler.fail = null;
+
+export default handler;
