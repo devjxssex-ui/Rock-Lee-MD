@@ -1,115 +1,89 @@
 const userSpamData = {}
+
 let handler = m => m
-handler.before = async function (m, {conn, isAdmin, isBotAdmin, isOwner, isROwner, isPrems}) {
-const chat = global.db.data.chats[m.chat]
-const bot = global.db.data.settings[conn.user.jid] || {}
-if (!bot.antiSpam) return
-if (m.isGroup && chat.modoadmin) return  
-if (m.isGroup) {
-if (isOwner || isROwner || isAdmin || !isBotAdmin || isPrems) return
-}  
-let user = global.db.data.users[m.sender]
-const sender = m.sender
-const currentTime = new Date().getTime()
-const timeWindow = 5000 // tiempo límite 
-const messageLimit = 10 // cantidad de mensajes en dicho tiempo
 
-let time, time2, time3, mensaje, motive
-time = 30000 // 30 seg
-time2 = 60000 // 1 min
-time3 = 120000 // 2 min 
+handler.before = async function (m, { conn, isAdmin, isBotAdmin, isOwner, isROwner, isPrems }) {
+  const chat = global.db.data.chats[m.chat]
+  const settings = global.db.data.settings[conn.user.jid] || {}
 
-if (!(sender in userSpamData)) {
-userSpamData[sender] = {
-lastMessageTime: currentTime,
-messageCount: 1, 
-antiBan: 0, 
-message: 0,
-message2: 0,
-message3: 0,
+  if (!settings.antiSpam) return
+  if (m.isGroup && chat.modoadmin) return  
+
+  if (m.isGroup) {
+    if (isOwner || isROwner || isAdmin || !isBotAdmin || isPrems) return
+  }
+
+  const sender = m.sender
+  const user = global.db.data.users[sender]
+  const now = Date.now()
+
+  const timeWindow = 5000 // 5 seg
+  const messageLimit = 10
+
+  const punishTimes = [30000, 60000, 120000] // 30s, 1m, 2m
+
+  if (!userSpamData[sender]) {
+    userSpamData[sender] = {
+      last: now,
+      count: 1,
+      strikes: 0
+    }
+    return
+  }
+
+  let data = userSpamData[sender]
+  let diff = now - data.last
+
+  // 📊 Contador
+  if (diff <= timeWindow) {
+    data.count++
+  } else {
+    data.count = 1
+  }
+
+  data.last = now
+
+  // 🚨 Detectar spam
+  if (data.count >= messageLimit) {
+    if (data.strikes >= 3) return
+
+    data.strikes++
+
+    const userTag = `@${sender.split('@')[0]}`
+
+    await conn.reply(m.chat,
+      `🚨 *ANTI-SPAM*\n\n⚠️ ${userTag} detectado haciendo spam.\n🔢 Nivel: ${data.strikes}/3`,
+      m,
+      { mentions: [sender] }
+    )
+
+    user.banned = true
+
+    // 💀 Expulsión en nivel 3
+    if (data.strikes >= 3) {
+      await conn.reply(m.chat,
+        `💀 *SPAM EXTREMO*\n\n${userTag} fue eliminado del grupo.`,
+        m,
+        { mentions: [sender] }
+      )
+
+      await conn.groupParticipantsUpdate(m.chat, [sender], 'remove')
+    }
+
+    // ⏳ Reset automático
+    setTimeout(() => {
+      if (userSpamData[sender]) {
+        userSpamData[sender] = {
+          last: Date.now(),
+          count: 0,
+          strikes: 0
+        }
+        user.banned = false
+      }
+    }, punishTimes[data.strikes - 1] || 30000)
+
+    data.count = 0
+  }
 }
-} else {
-const userData = userSpamData[sender]
-const timeDifference = currentTime - userData.lastMessageTime
-
-if (userData.antiBan === 1) {
-if (userData.message < 1) {
-userData.message++  
-motive = `᥀·࣭࣪̇˖⚔️◗ 𝙉𝙤 𝙝𝙖𝙜𝙖𝙨 𝙨𝙥𝙖𝙢.`
-await conn.reply(m.chat, motive, m, { mentions: [m.sender] })  
-user.messageSpam = motive
-}} else if (userData.antiBan === 2) {
-if (userData.message2 < 1) {
-userData.message2++  
-motive =  `᥀·࣭࣪̇˖⚔️◗ 𝙉𝙤 𝙝𝙖𝙜𝙖𝙨 𝙨𝙥𝙖𝙢...`
-await conn.reply(m.chat, motive, m, { mentions: [m.sender] })  
-user.messageSpam = motive
-}} else if (userData.antiBan === 3) {
-if (userData.message3 < 1) {
-userData.message3++  
-motive = `᥀·࣭࣪̇˖👺◗ 𝙎𝙚𝙧𝙖𝙨 𝙚𝙡𝙞𝙢𝙞𝙣𝙖𝙙𝙤(𝙖) 𝙥𝙤𝙧 𝙝𝙖𝙘𝙚𝙧 𝙨𝙥𝙖𝙢.`
-await conn.reply(m.chat, motive, m, { mentions: [m.sender] }) 
-user.messageSpam = motive
-await conn.groupParticipantsUpdate(m.chat, [sender], 'remove')
-}}
-
-if (timeDifference <= timeWindow) {
-userData.messageCount += 1
-
-if (userData.messageCount >= messageLimit) {
-const mention = `@${sender.split("@")[0]}`
-const warningMessage = `🚩 _*Mucho Spam*_\n\n𝙐𝙨𝙪𝙖𝙧𝙞𝙤: ${mention}`
-if (userData.antiBan > 2) return
-await conn.reply(m.chat, warningMessage, m, { mentions: [m.sender] })  
-user.banned = true
-userData.antiBan++
-userData.messageCount = 1
-
-if (userData.antiBan === 1) {
-setTimeout(() => {
-if (userData.antiBan === 1) {
-userData.antiBan = 0
-userData.message = 0
-userData.message2 = 0
-userData.message3 = 0
-user.antispam = 0
-motive = 0
-user.messageSpam = 0
-user.banned = false
-}}, time) 
-
-} else if (userData.antiBan === 2) {
-setTimeout(() => {
-if (userData.antiBan === 2) {
-userData.antiBan = 0
-userData.message = 0
-userData.message2 = 0
-userData.message3 = 0
-user.antispam = 0
-motive = 0
-user.messageSpam = 0
-user.banned = false
-}}, time2) 
-
-} else if (userData.antiBan === 3) {
-setTimeout(() => {
-if (userData.antiBan === 3) {
-userData.antiBan = 0
-userData.message = 0
-userData.message2 = 0
-userData.message3 = 0
-user.antispam = 0
-motive = 0
-user.messageSpam = 0
-user.banned = false
-}}, time3)
-
-}}
-} else {
-if (timeDifference >= 2000) {
-userData.messageCount = 1
-}}
-userData.lastMessageTime = currentTime
-}}
 
 export default handler
