@@ -1,7 +1,7 @@
 {
-  "name": "black-clover-MD",
-  "version": "7.7.7",
-  "description": "El Mejor bot de WhatsApp",
+  "name": "rock-lee-md",
+  "version": "1.0.0",
+  "description": "¡El bot de WhatsApp con el poder de la juventud al máximo! 💪🔥",
   "main": "index.js",
   "type": "module",
 
@@ -21,9 +21,9 @@
     "eslint": "eslint .",
     "eslintfix": "eslint --fix ."
   },
-  "homepage": "https://github.com/thecarlos19/black-clover-MD",
+  "homepage": "https://github.com/tuusuario/rock-lee-md",
   "author": {
-    "name": "thecarlos19"
+    "name": "tuusuario"
   },
   "collaborators": {
     "col1": "Antuan",
@@ -32,10 +32,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/thecarlos19/black-clover-MD.git"
+    "url": "git+https://github.com/tuusuario/rock-lee-md.git"
   },
   "bugs": {
-    "url": "https://github.com/thecarlos19/black-clover-MD/issues"
+    "url": "https://github.com/tuusuario/rock-lee-md/issues"
   },
   "license": "GPL-3.0-or-later",
   "dependencies": {
@@ -108,5 +108,5 @@
     "wa-sticker-formatter": "^4.3.2",
     "moment-timezone": "^0.5.37"
   },
-  "_note": "Compatible con todas las plataformas para bots de WhatsApp"
+  "_note": "Compatible con todas las plataformas para bots de WhatsApp - Estilo Rock Lee 💪🔥"
 }
