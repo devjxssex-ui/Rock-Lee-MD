@@ -1,17 +1,42 @@
-import { canLevelUp, xpRange } from '../lib/levelling.js'
-import { levelup } from '../lib/canvas.js'
+import { canLevelUp } from '../lib/levelling.js'
+
 export function before(m, { conn }) {
-//if (!db.data.chats[m.chat].autonivel && m.isGroup) throw 
+  try {
+    if (!m?.sender || !m?.chat) return
 
-let user = global.db.data.users[m.sender]
-let chat = global.db.data.chats[m.chat]
-if (!chat.autolevelup)
-return !0
+    const user = global?.db?.data?.users?.[m.sender]
+    const chat = global?.db?.data?.chats?.[m.chat]
 
-let before = user.level * 1
-while (canLevelUp(user.level, user.exp, global.multiplier)) user.level++
-if (before !== user.level) {
-m.reply(`*🎉 ¡ F E L I C I D A D E S ! 🎉*\n\n💫 Nivel Actual » *${user.level}*\n🌵 Rango » *${user.role}*\n📆 Fecha » *${moment.tz('America/Bogota').format('DD/MM/YY')}*\n\n> *\`¡Has alcanzado un Nuevo Nivel!\`*
-`.trim())
+    if (!user || !chat?.autolevelup) return
+
+    let oldLevel = user.level
+
+    // ⚡ subir niveles de golpe si tiene exp suficiente
+    while (canLevelUp(user.level, user.exp, global.multiplier)) {
+      user.level++
     }
-} 
+
+    if (oldLevel === user.level) return
+
+    // ⚡ fecha simple (sin moment para ahorrar recursos)
+    const fecha = new Date().toLocaleDateString('es-MX')
+
+    // ⚡ mensaje pro
+    const texto = `
+🎉 *¡FELICIDADES!* 🎉
+
+📈 Nivel: *${oldLevel} ➜ ${user.level}*
+🏆 Rango: *${user.role || 'Sin rango'}*
+📅 Fecha: *${fecha}*
+
+✨ *Subiste de nivel, sigue así crack*
+`.trim()
+
+    conn.sendMessage(m.chat, { text: texto }, { quoted: m })
+
+  } catch (e) {
+    console.error('❌ Error en autolevelup:', e)
+  }
+
+  return !0
+}
