@@ -1,34 +1,49 @@
-import { writeFile } from 'fs/promises'
-
 let handler = async (m, { conn }) => {
   const emoji = '⚠️'
-  const rwait = '⏳'
-  const done = '✅'
-  const error = '❌'
-
-  let q = m.quoted ? m.quoted : m
-  let mime = (q.msg || q).mimetype || ''
-  if (!/webp/.test(mime)) return conn.reply(m.chat, `${emoji} Responde a un sticker para convertirlo en imagen.`, m)
-
-  await m.react(rwait)
 
   try {
-    let img = await q.download()
-    if (!img) throw new Error('No se pudo descargar el sticker.')
+    const q = m.quoted ? m.quoted : m
+    const mime = (q.msg || q).mimetype || ''
 
-    let fileName = `sticker-${Date.now()}.jpg`
-    await writeFile(fileName, img)
+    // ✔ validación correcta
+    if (!/webp/.test(mime)) {
+      return conn.reply(
+        m.chat,
+        `${emoji} Responde a un *sticker* para convertirlo en imagen.`,
+        m
+      )
+    }
 
-    await conn.sendMessage(m.chat, { image: img, caption: 'Aquí tienes tu imagen.' }, { quoted: m })
-    await m.react(done)
-  } catch (err) {
-    console.error(err)
-    await m.react(error)
-    conn.reply(m.chat, `${emoji} Error al convertir el sticker:\n${err.message}`, m)
+    await m.react?.('⏳')
+
+    const media = await q.download()
+    if (!media) throw 'No se pudo descargar el sticker'
+
+    // 🚀 sin guardar archivo (más rápido)
+    await conn.sendMessage(
+      m.chat,
+      {
+        image: media,
+        caption: '🖼 Imagen lista 😈'
+      },
+      { quoted: m }
+    )
+
+    await m.react?.('✅')
+
+  } catch (e) {
+    console.error('❌ Error toimg:', e)
+    await m.react?.('❌')
+    conn.reply(
+      m.chat,
+      `${emoji} Error al convertir el sticker`,
+      m
+    )
   }
 }
 
 handler.help = ['toimg']
 handler.tags = ['herramientas']
 handler.command = ['toimg']
+
 export default handler
