@@ -1,44 +1,89 @@
 const handler = async (m, { conn, text, command, usedPrefix }) => {
-    const pp = 'https://i.imgur.com/vWnsjh8.jpg'
-    let number, ownerNumber, aa, who
-    if (m.isGroup) {
-        who = m.mentionedJid?.[0] ? m.mentionedJid[0] : m.quoted?.sender ? m.quoted.sender : text
-    } else who = m.chat
+    // Imagen de portada del bot
+    const pp = 'https://i.imgur.com/vWnsjh8.jpg'; 
+    let who;
+
+    // Determinar a quién se va a advertir
+    if (m.isGroup) who = m.mentionedJid?.[0] || m.quoted?.sender || text;
+    else who = m.chat;
+
     if (!who) {
-        const warntext = `*❌ Etiquete a una persona o responda a un mensaje del grupo para advertir al usuario*\n\n*Ejemplo:*\n*${usedPrefix + command} @tag*`
-        return m.reply(warntext, m.chat, { mentions: conn.parseMention(warntext) })
+        const warntext = `🚩 *Etiqueta a alguien o responde a un mensaje para advertir*\n\n*Ejemplo:*\n*${usedPrefix + command} @tag*`;
+        return conn.reply(m.chat, warntext, m, {
+            contextInfo: { 
+                externalAdReply: {
+                    title: '•🩻 ROCK LEE BOT 🩻•',
+                    body: 'Sistema de advertencias',
+                    sourceUrl: 'https://t.me/RockLeeBot',
+                    thumbnail: pp
+                }
+            }
+        });
     }
 
-    const user = global.db.data.users[who] || {}
-    global.db.data.users[who] = user
-    user.warn = user.warn || 0
+    // Inicializar datos del usuario en la DB
+    const user = global.db.data.users[who] || {};
+    global.db.data.users[who] = user;
+    user.warn = user.warn || 0;
 
-    const usuario = conn.user.jid.split`@`[0] + '@s.whatsapp.net'
+    // Evitar advertir al propietario
+    const usuario = conn.user.jid.split`@`[0] + '@s.whatsapp.net';
     for (let i = 0; i < global.owner.length; i++) {
-        ownerNumber = global.owner[i][0]
+        let ownerNumber = global.owner[i][0];
         if (usuario.replace(/@s\.whatsapp\.net$/, '') === ownerNumber) {
-            aa = ownerNumber + '@s.whatsapp.net'
-            await conn.reply(m.chat, `…`, m, { mentions: [aa] })
-            return
+            let aa = ownerNumber + '@s.whatsapp.net';
+            return conn.reply(m.chat, `⚠️ No puedes advertir al propietario del bot 🩻`, m, {
+                contextInfo: { externalAdReply: { title: '•🩻 ROCK LEE BOT 🩻•', body: 'Advertencia denegada', thumbnail: pp, sourceUrl: 'https://t.me/RockLeeBot' } },
+                mentions: [aa]
+            });
         }
     }
 
-    const dReason = 'Sin motivo'
-    const msgtext = text || dReason
-    const sdms = msgtext.replace(/@\d+-?\d* /g, '')
+    const dReason = 'Sin motivo';
+    const msgtext = text || dReason;
+    const sdms = msgtext.replace(/@\d+-?\d* /g, '');
 
-    user.warn += 1
-    await m.reply(`${user.warn == 1 ? `*@${who.split`@`[0]}*` : `*@${who.split`@`[0]}*`} 𝚁𝙴𝙲𝙸𝙱𝙸𝙾 𝚄𝙽𝙰 𝙰𝙳𝚅𝙴𝚁𝚃𝙴𝙽𝙲𝙸𝙰 𝙴𝙽 𝙴𝚂𝚃𝙴 𝙶𝚁𝚄𝙿𝙾!\nMotivo: ${sdms}\n*Advertencias: ${user.warn}/3*`, null, { mentions: [who] })
+    // Aumentar contador de advertencias
+    user.warn += 1;
+    await m.reply(
+        `🩻 *ROCK LEE BOT* 🩻\n\n*@${who.split`@`[0]}* ha recibido una advertencia en este grupo!\nMotivo: ${sdms}\n*Advertencias: ${user.warn}/3*`,
+        m, {
+            contextInfo: {
+                externalAdReply: {
+                    title: '•🩻 Sistema de Advertencias 🩻•',
+                    body: 'Mantén el orden en el grupo',
+                    thumbnail: pp,
+                    sourceUrl: 'https://t.me/RockLeeBot'
+                }
+            },
+            mentions: [who]
+        }
+    );
 
+    // Si alcanza 3 advertencias, se resetea y se expulsa
     if (user.warn >= 3) {
-        user.warn = 0
-        await m.reply(`𝚃𝙴 𝙻𝙾 𝙰𝙳𝚅𝙴𝚁𝚃𝙸 𝚅𝙰𝚁𝙸𝙰𝚂 𝚅𝙴𝙲𝙴𝚂!!\n*@${who.split`@`[0]}* 𝚂𝚄𝙿𝙴𝚁𝙰𝚂𝚃𝙴 𝙻𝙰𝚂 *3* 𝙰𝙳𝚅𝙴𝚁𝚃𝙴𝙽𝙲𝙸𝙰𝚂, 𝙰𝙷𝙾𝚁𝙰 𝚂𝙴 𝚁𝙴𝙼𝙾𝚅𝙴𝚁𝙰́ 👽`, null, { mentions: [who] })
-        await conn.groupParticipantsUpdate(m.chat, [who], 'remove')
+        user.warn = 0;
+        await m.reply(
+            `🚨 *ALERTA MAXIMA* 🚨\n*@${who.split`@`[0]}* ha superado las 3 advertencias!\nAhora será removido del grupo 🩻`,
+            m, {
+                contextInfo: {
+                    externalAdReply: {
+                        title: '•🩻 ROCK LEE BOT 🩻•',
+                        body: 'Usuario expulsado',
+                        thumbnail: pp,
+                        sourceUrl: 'https://t.me/RockLeeBot'
+                    }
+                },
+                mentions: [who]
+            }
+        );
+        await conn.groupParticipantsUpdate(m.chat, [who], 'remove');
     }
-    return false
-}
 
-handler.command = ['advertir', 'advertencia', 'warn', 'warning']
-handler.group = true
-handler.admin = true
-export default handler
+    return false;
+};
+
+handler.command = ['advertir', 'advertencia', 'warn', 'warning'];
+handler.group = true;
+handler.admin = true;
+export default handler;
