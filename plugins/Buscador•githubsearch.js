@@ -3,13 +3,17 @@ import fetch from 'node-fetch'
 const handler = async (m, { conn, text, usedPrefix, command }) => {
   if (!text) return conn.reply(
     m.chat, 
-    `🚩 *Ingrese el nombre de un repositorio de github*\n\nEjemplo, ${usedPrefix + command} black-clover-MD`, 
-    m, 
-    global.rcanal
+    `⚡ *GITHUB SEARCH*
+
+> Ingresa el nombre de un repositorio
+
+📌 Ejemplo:
+${usedPrefix + command} black-clover-MD`, 
+    m
   )
 
   try {
-    await m.react(global.rwait)
+    await m.react('⏳')
 
     const res = await fetch(global.API('https://api.github.com', '/search/repositories', {
       q: text,
@@ -20,26 +24,27 @@ const handler = async (m, { conn, text, usedPrefix, command }) => {
 
     let str = json.items.map((repo, index) => {
       return `
-🍟 *Resultado:* ${1 + index}
-🔗 *Enlace:* ${repo.html_url}
-👑 *Creador:* ${repo.owner.login}
-🍟 *Nombre:* ${repo.name}
-🫂 *Creado:* ${formatDate(repo.created_at)}
-💥 *Actualizado:* ${formatDate(repo.updated_at)}
-👀 *Visitas:* ${repo.watchers}
-✨️ *Bifurcado:* ${repo.forks}
-🌟 *Estrellas:* ${repo.stargazers_count}
-🍂 *Issues:* ${repo.open_issues}
-🍭 *Descripción:* ${repo.description ? `${repo.description}` : 'Sin Descripción'}
-⭐️ *Clone:* ${repo.clone_url}
+╭━━━〔 ⚡ RESULTADO ${index + 1} 〕━━━⬣
+┃ 📦 *Repo:* ${repo.name}
+┃ 👑 *Autor:* ${repo.owner.login}
+┃ 🔗 *Link:* ${repo.html_url}
+┃ ⭐ *Stars:* ${repo.stargazers_count}
+┃ 🍴 *Forks:* ${repo.forks}
+┃ 👀 *Watchers:* ${repo.watchers}
+┃ ⚠️ *Issues:* ${repo.open_issues}
+┃ 🗓 *Creado:* ${formatDate(repo.created_at)}
+┃ 🔄 *Actualizado:* ${formatDate(repo.updated_at)}
+┃ 📄 *Descripción:* ${repo.description || 'Sin descripción'}
+┃ 📥 *Clone:* ${repo.clone_url}
+╰━━━━━━━━━━━━━━━━━━⬣
       `.trim()
-    }).join('\n\n─────────────────\n\n')
+    }).join('\n\n')
 
     let img = await (await fetch(json.items[0].owner.avatar_url)).buffer()
 
     await conn.sendMini(
       m.chat, 
-      '🍟 G I T H U B - S E A R C H 🍟', 
+      '⚡ G I T H U B  -  S E A R C H ⚡', 
       global.dev, 
       str, 
       img, 
@@ -48,14 +53,14 @@ const handler = async (m, { conn, text, usedPrefix, command }) => {
       global.estilo
     )
 
-    await m.react(global.done)
-  } catch {
-    await m.react(global.error)
+    await m.react('✅')
+
+  } catch (e) {
+    await m.react('❌')
     conn.reply(
       m.chat, 
-      '🚩 *No se encontró resultados de:* ' + text, 
-      m, 
-      global.fake
+      `🚫 *Sin resultados para:* ${text}`, 
+      m
     )
   }
 }
@@ -75,7 +80,6 @@ function formatDate(n, locale = 'es') {
     month: 'long',
     year: 'numeric',
     hour: 'numeric',
-    minute: 'numeric',
-    second: 'numeric'
+    minute: 'numeric'
   })
 }
