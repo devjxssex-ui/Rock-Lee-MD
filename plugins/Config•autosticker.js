@@ -1,54 +1,62 @@
+
 import { sticker } from '../lib/sticker.js'
+
+// ⚡ Créditos:
+// 💻 Base: Rock Lee-MD
+// 🧠 Optimización: Devjxssex
 
 let handler = m => m
 
-handler.all = async function (m) {
-  let chat = global.db.data.chats[m.chat]
-  let user = global.db.data.users[m.sender]
+handler.all = async function (m, { conn }) {
+  try {
+    const chat = global?.db?.data?.chats?.[m.chat]
+    if (!chat?.autosticker || !m.isGroup) return
 
-  if (chat.autosticker && m.isGroup) {
-    let q = m
+    const q = m
+    const mime = (q.msg || q).mimetype || q.mediaType || ''
     let stiker = false
-    let mime = (q.msg || q).mimetype || q.mediaType || ''
 
-    if (/webp/g.test(mime)) return
+    // 🚫 evitar reprocesar stickers
+    if (/webp/.test(mime)) return
 
-    if (/image/g.test(mime)) {
-      let img = await q.download?.()
+    // 🖼️ IMAGEN → STICKER
+    if (/image/.test(mime)) {
+      const img = await q.download?.()
       if (!img) return
-      stiker = await sticker(img, false, packname, author)
 
-    } else if (/video/g.test(mime)) {
-      if ((q.msg || q).seconds > 8)
-        return await m.reply('᥀·࣭࣪̇˖🚩◗  *El video no debe de durar más de 7 segundos, intentalo de nuevo.*')
+      stiker = await sticker(img, false, global.packname, global.author)
 
-      let vid = await q.download()
-      if (!vid) return
-      stiker = await sticker(vid, false, packname, author)
-
-    } else if (m.text.split(/\n| /i)[0]) {
-      if (isUrl(m.text)) {
-        stiker = await sticker(false, m.text.split(/\n| /i)[0], packname, author)
-      } else return
-    }
-
-    if (stiker) {
-      const contextInfo = {
-        externalAdReply: {
-          showAdAttribution: false,
-          title: `Auto estikers 😈`,
-          body: `✡︎ Black-clover-MD • The Carlos`,
-          mediaType: 2,
-          sourceUrl: global.redes || '',
-          thumbnail: global.icons || null
-        }
+    // 🎥 VIDEO → STICKER
+    } else if (/video/.test(mime)) {
+      const seconds = (q.msg || q).seconds || 0
+      if (seconds > 7) {
+        return m.reply('🚩 El video debe durar máximo *7 segundos*')
       }
 
-      await conn.sendMessage(m.chat, {
-        sticker: stiker,
-        contextInfo
-      }, { quoted: m })
+      const vid = await q.download?.()
+      if (!vid) return
+
+      stiker = await sticker(vid, false, global.packname, global.author)
+
+    // 🌐 URL → STICKER
+    } else if (m.text) {
+      const url = m.text.trim().split(/\s+/)[0]
+      if (!isUrl(url)) return
+
+      stiker = await sticker(false, url, global.packname, global.author)
     }
+
+    if (!stiker) return
+
+    // ⚡ envío optimizado
+    await conn.sendMessage(
+      m.chat,
+      { sticker: stiker },
+      { quoted: m }
+    )
+
+  } catch (e) {
+    console.error('❌ Error autosticker:', e)
   }
 
   return !0
@@ -56,8 +64,7 @@ handler.all = async function (m) {
 
 export default handler
 
-const isUrl = (text) => {
-  return text.match(
-    /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&/=]*)(jpe?g|gif|png|mp4)/gi
-  )
+// 🔎 detector de links mejorado
+const isUrl = (text = '') => {
+  return /https?:\/\/.+\.(jpg|jpeg|png|gif|mp4|webp)/i.test(text)
 }
