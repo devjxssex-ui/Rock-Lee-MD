@@ -1,148 +1,85 @@
-// @type {import('@whiskeysockets/baileys')}
-const { proto, generateWAMessage, areJidsSameUser } = (await import('@whiskeysockets/baileys')).default
+// ⚡ Créditos:
+// 💻 Base: Rock Lee-MD
+// 🧠 Optimización: Devjxssex
 
-export async function all(m, chatUpdate) {
-  if (m.isBaileys) return
-  if (!m.message) return
-  if (
-    !(
-      m.message.buttonsResponseMessage ||
-      m.message.templateButtonReplyMessage ||
-      m.message.listResponseMessage ||
-      m.message.interactiveResponseMessage
-    )
-  )
-    return
+import baileys from '@whiskeysockets/baileys'
+const { proto, generateWAMessage, areJidsSameUser } = baileys
 
-  let id
-  if (m.message.buttonsResponseMessage) {
-    id = m.message.buttonsResponseMessage.selectedButtonId
-  } else if (m.message.templateButtonReplyMessage) {
-    id = m.message.templateButtonReplyMessage.selectedId
-  } else if (m.message.listResponseMessage) {
-    id = m.message.listResponseMessage.singleSelectReply?.selectedRowId
-  } else if (m.message.interactiveResponseMessage) {
-    try {
-      id = JSON.parse(
-        m.message.interactiveResponseMessage.nativeFlowResponseMessage.paramsJson
-      ).id
-    } catch {
-      id = ''
-    }
-  }
-
-  // Usamos id si existe, si no text, nunca mostramos "acción desconocida"
-  const safeText =
-    id ||
-    m.message.buttonsResponseMessage?.selectedDisplayText ||
-    m.message.templateButtonReplyMessage?.selectedDisplayText ||
-    m.message.listResponseMessage?.title ||
-    ''
-
-  const messages = await generateWAMessage(
-    m.chat,
-    { text: safeText, mentions: m.mentionedJid },
-    {
-      userJid: this.user.id,
-      quoted: m.quoted && m.quoted.fakeObj,
-      generateLinkPreview: false
-    }
-  )
-
-  messages.key.fromMe = areJidsSameUser(m.sender, this.user.id)
-  messages.key.id = m.key.id
-  messages.pushName = m.name
-
-  if (m.isGroup) {
-    messages.key.participant = messages.participant = m.sender
-  }
-
-  const msg = {
-    ...chatUpdate,
-    messages: [proto.WebMessageInfo.fromObject(messages)].map((v) => (v.conn = this, v)),
-    type: 'append',
-  }
-
-  this.ev.emit('messages.upsert', msg)
-}
-
-/*const {
-  proto,
-  generateWAMessage,
-  areJidsSameUser
-} = (await import('@whiskeysockets/baileys')).default
 export async function all(m, chatUpdate) {
   try {
-    if (m.isBaileys) return
-    if (!m.message) return
-    if (!(m.message.buttonsResponseMessage || m.message.templateButtonReplyMessage || m.message.listResponseMessage ||
-        m.message.interactiveResponseMessage)) return
-    let id = m.message.buttonsResponseMessage?.selectedButtonId || m.message.templateButtonReplyMessage?.selectedId ||
-      m.message.listResponseMessage?.singleSelectReply?.selectedRowId || JSON.parse(m.message
-        .interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson)?.id
-    let text = m.message.buttonsResponseMessage?.selectedDisplayText || m.message.templateButtonReplyMessage
-      ?.selectedDisplayText || m.message.listResponseMessage?.title || m.message.interactiveResponseMessage?.body
-      ?.text
-    let isIdMessage = false,
-      usedPrefix
-    for (let name in plugins) {
-      let plugin = plugins[name]
-      if (!plugin) continue
-      if (plugin.disabled) continue
-      if (!opts['restrict'])
-        if (plugin.tags && plugin.tags.includes('admin')) continue
-      if (typeof plugin !== 'function') continue
-      if (!plugin.command) continue
-      const str2Regex = str => str.replace(/[|\\{}()[\]^$+*?.]/g, '\\$&')
-      let _prefix = plugin.customPrefix ? plugin.customPrefix : this.prefix ? this.prefix : prefix
-      let match = (_prefix instanceof RegExp ? // RegExp Mode?
-        [
-          [_prefix.exec(id), _prefix]
-        ] : Array.isArray(_prefix) ? // Array?
-        _prefix.map(p => {
-          let re = p instanceof RegExp ? // RegExp in Array?
-            p : new RegExp(str2Regex(p))
-          return [re.exec(id), re]
-        }) : typeof _prefix === 'string' ? // String?
-        [
-          [new RegExp(str2Regex(_prefix)).exec(id), new RegExp(str2Regex(_prefix))]
-        ] : [
-          [
-            [], new RegExp
-          ]
-        ]).find(p => p[1])
-      if ((usedPrefix = (match[0] || '')[0])) {
-        let noPrefix = id.replace(usedPrefix, '')
-        let [command] = noPrefix.trim().split(' ').filter(v => v)
-        command = (command || '').toLowerCase()
-        let isId = plugin.command instanceof RegExp ? // RegExp Mode?
-          plugin.command.test(command) : Array.isArray(plugin.command) ? // Array?
-          plugin.command.some(cmd => cmd instanceof RegExp ? // RegExp in Array?
-            cmd.test(command) : cmd === command) : typeof plugin.command === 'string' ? // String?
-          plugin.command === command : false
-        if (!isId) continue
-        isIdMessage = true
+    if (!m || m.isBaileys || !m.message) return
+
+    const msg = m.message
+
+    // ⚡ detectar interacción
+    if (
+      !msg.buttonsResponseMessage &&
+      !msg.templateButtonReplyMessage &&
+      !msg.listResponseMessage &&
+      !msg.interactiveResponseMessage
+    ) return
+
+    let id = ''
+
+    // ⚡ obtener ID limpio
+    if (msg.buttonsResponseMessage) {
+      id = msg.buttonsResponseMessage.selectedButtonId
+
+    } else if (msg.templateButtonReplyMessage) {
+      id = msg.templateButtonReplyMessage.selectedId
+
+    } else if (msg.listResponseMessage) {
+      id = msg.listResponseMessage.singleSelectReply?.selectedRowId
+
+    } else if (msg.interactiveResponseMessage) {
+      try {
+        const json = msg.interactiveResponseMessage.nativeFlowResponseMessage?.paramsJson
+        id = JSON.parse(json || '{}').id || ''
+      } catch {
+        id = ''
       }
     }
-    let messages = await generateWAMessage(m.chat, {
-      text: isIdMessage ? id : text,
-      mentions: m.mentionedJid
-    }, {
-      userJid: this.user.id,
-      quoted: m.quoted?.fakeObj
-    })
-    messages.key.fromMe = areJidsSameUser(m.sender, this.user.id)
-    messages.key.id = m.key.id
-    messages.pushName = m.name
-    if (m.isGroup) messages.key.participant = messages.participant = m.sender
-    let msg = {
-      ...chatUpdate,
-      messages: [proto.WebMessageInfo.fromObject(messages)].map(v => (v.conn = this, v)),
-      type: 'append'
+
+    // ⚡ fallback seguro (sin "acción desconocida")
+    const text =
+      id ||
+      msg.buttonsResponseMessage?.selectedDisplayText ||
+      msg.templateButtonReplyMessage?.selectedDisplayText ||
+      msg.listResponseMessage?.title ||
+      ''
+
+    if (!text) return
+
+    // ⚡ generar mensaje simulado
+    const message = await generateWAMessage(
+      m.chat,
+      { text, mentions: m.mentionedJid || [] },
+      {
+        userJid: this.user.id,
+        quoted: m.quoted?.fakeObj,
+        generateLinkPreview: false
+      }
+    )
+
+    // ⚡ props correctas
+    message.key.fromMe = areJidsSameUser(m.sender, this.user.id)
+    message.key.id = m.key.id
+    message.pushName = m.pushName || m.name
+
+    if (m.isGroup) {
+      message.key.participant = message.participant = m.sender
     }
-    this.ev.emit('messages.upsert', msg)
-  } catch (error) {
-    console.error('Error in processing message:', error);
+
+    // ⚡ emitir evento
+    this.ev.emit('messages.upsert', {
+      ...chatUpdate,
+      messages: [
+        proto.WebMessageInfo.fromObject(message)
+      ].map(v => (v.conn = this, v)),
+      type: 'append'
+    })
+
+  } catch (e) {
+    console.error('❌ Error templateresponse:', e)
   }
 }
-*/
