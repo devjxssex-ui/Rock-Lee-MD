@@ -1,60 +1,156 @@
-// banco.js
-let handler = async (m, { conn, text, command, usedPrefix }) => {
-  let users = global.db.data.users[m.sender]
+const handler = async (m, { conn, text, usedPrefix }) => {
+  let user = global.db.data.users[m.sender]
 
-  if (!users.monedas) users.monedas = 0
-  if (!users.deuda) users.deuda = { monto: 0, interes: 0.05, vencimiento: null } // 5% de interés por periodo
-  if (!users.bloqueado) users.bloqueado = false
+  // 📊 Inicializar datos
+  user.monedas = user.monedas || 0
+  user.deuda = user.deuda || { monto: 0, interes: 0.05, vencimiento: 0 }
+  user.bloqueado = user.bloqueado || false
 
-  const args = text ? text.trim().split(" ") : []
+  const args = text?.trim().split(/\s+/) || []
+  const accion = args[0]?.toLowerCase()
 
-  if (!args[0]) return conn.reply(m.chat, `🚩 Comandos del banco:\n\n*${usedPrefix}banco pedir <cantidad>* - Solicitar préstamo\n*${usedPrefix}banco pagar <cantidad>* - Pagar deuda`, m)
+  // 📌 Menú
+  if (!accion) {
+    return conn.reply(
+      m.chat,
+      `🏦 *BANCO ROCK LEE 🩻*
 
-  const accion = args[0].toLowerCase()
+📌 Comandos:
+• ${usedPrefix}banco pedir <cantidad>
+• ${usedPrefix}banco pagar <cantidad>
+• ${usedPrefix}banco estado
 
+💰 Maneja tus préstamos con cuidado...`,
+      m
+    )
+  }
+
+  // 📊 ESTADO
+  if (accion === 'estado') {
+    if (user.deuda.monto <= 0) {
+      return conn.reply(
+        m.chat,
+        '✅ No tienes deudas pendientes.',
+        m
+      )
+    }
+
+    const total = Math.ceil(user.deuda.monto * (1 + user.deuda.interes))
+    const tiempo = user.deuda.vencimiento - Date.now()
+
+    return conn.reply(
+      m.chat,
+      `📊 *Estado de deuda*
+
+💸 Deuda base: *${user.deuda.monto}*
+📈 Total a pagar: *${total}*
+⏳ Tiempo restante: *${Math.max(0, Math.floor(tiempo / 1000))}s*`,
+      m
+    )
+  }
+
+  // 💰 PEDIR
   if (accion === 'pedir') {
     let monto = parseInt(args[1])
-    if (isNaN(monto) || monto <= 0) return conn.reply(m.chat, "🚩 Ingresa un monto válido para pedir prestado.", m)
-    if (monto > 1000000) return conn.reply(m.chat, "🚩 El máximo que puedes pedir prestado es 1.000.000 monedas.", m)
-    if (users.deuda.monto > 0) return conn.reply(m.chat, `🚩 Ya tienes un préstamo pendiente de ${users.deuda.monto} monedas.`, m)
 
-    // Asignar deuda
-    users.deuda.monto = monto
-    users.deuda.vencimiento = Date.now() + 24 * 60 * 60 * 1000 // 1 día para pagar
-    users.monedas += monto
-    users.bloqueado = true
-
-    conn.reply(m.chat, `💰 Has pedido ${monto} monedas prestadas. Tienes que pagar antes de ${new Date(users.deuda.vencimiento).toLocaleString()} con un interés de 5%.`, m)
-  }
-
-  else if (accion === 'pagar') {
-    if (users.deuda.monto <= 0) return conn.reply(m.chat, "🚩 No tienes deuda pendiente.", m)
-    let pago = parseInt(args[1])
-    if (isNaN(pago) || pago <= 0) return conn.reply(m.chat, "🚩 Ingresa un monto válido para pagar.", m)
-    if (pago > users.monedas) return conn.reply(m.chat, "🚩 No tienes suficientes monedas para pagar esa cantidad.", m)
-
-    let deudaTotal = Math.ceil(users.deuda.monto * (1 + users.deuda.interes))
-
-    if (pago >= deudaTotal) {
-      users.monedas -= deudaTotal
-      users.deuda.monto = 0
-      users.deuda.vencimiento = null
-      users.bloqueado = false
-      conn.reply(m.chat, `✅ Has pagado tu deuda completa. Todos los comandos están desbloqueados.`, m)
-    } else {
-      users.monedas -= pago
-      users.deuda.monto = deudaTotal - pago
-      conn.reply(m.chat, `💸 Pagaste ${pago} monedas. Te queda una deuda de ${users.deuda.monto} monedas.`, m)
+    if (!monto || monto <= 0) {
+      return conn.reply(m.chat, '🚩 Ingresa un monto válido.', m)
     }
+
+    if (monto > 1000000) {
+      return conn.reply(m.chat, '🚩 Máximo préstamo: 1,000,000 monedas.', m)
+    }
+
+    if (user.deuda.monto > 0) {
+      return conn.reply(
+        m.chat,
+        `⚠️ Ya tienes una deuda activa de ${user.deuda.monto}.`,
+        m
+      )
+    }
+
+    // 📌 Asignar préstamo
+    user.deuda = {
+      monto,
+      interes: 0.05,
+      vencimiento: Date.now() + 24 * 60 * 60 * 1000
+    }
+
+    user.monedas += monto
+    user.bloqueado = true
+
+    return conn.reply(
+      m.chat,
+      `💰 *Préstamo aprobado*
+
+📥 Recibiste: *${monto}*
+📈 Interés: *5%*
+⏳ Tiempo: *24h*
+
+⚠️ Si no pagas, habrá consecuencias...
+
+🩻 Rock Lee Bank`,
+      m
+    )
   }
 
-  else {
-    conn.reply(m.chat, "🚩 Comando desconocido. Usa *pedir* o *pagar*.", m)
+  // 💸 PAGAR
+  if (accion === 'pagar') {
+    if (user.deuda.monto <= 0) {
+      return conn.reply(m.chat, '🚩 No tienes deuda.', m)
+    }
+
+    let pago = parseInt(args[1])
+    if (!pago || pago <= 0) {
+      return conn.reply(m.chat, '🚩 Ingresa un monto válido.', m)
+    }
+
+    if (pago > user.monedas) {
+      return conn.reply(m.chat, '🚩 No tienes suficientes monedas.', m)
+    }
+
+    let total = Math.ceil(user.deuda.monto * (1 + user.deuda.interes))
+
+    // ✅ Pago completo
+    if (pago >= total) {
+      user.monedas -= total
+      user.deuda = { monto: 0, interes: 0.05, vencimiento: 0 }
+      user.bloqueado = false
+
+      return conn.reply(
+        m.chat,
+        `✅ *Deuda pagada*
+
+🎉 Has quedado libre.
+🔓 Comandos desbloqueados.`,
+        m
+      )
+    }
+
+    // 💸 Pago parcial
+    user.monedas -= pago
+    user.deuda.monto = total - pago
+
+    return conn.reply(
+      m.chat,
+      `💸 Pagaste *${pago}*
+
+📉 Deuda restante: *${user.deuda.monto}*`,
+      m
+    )
   }
+
+  // ❌ Default
+  return conn.reply(
+    m.chat,
+    '🚩 Usa: pedir / pagar / estado',
+    m
+  )
 }
 
 handler.command = ['banco2', 'bank2']
 handler.tags = ['economy']
-handler.register = true
 handler.group = true
+handler.register = true
+
 export default handler
