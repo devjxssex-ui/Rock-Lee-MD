@@ -1,5 +1,5 @@
 global.dfail = (type, m, usedPrefix, command, conn) => {
-    const msg = {
+    const msgs = {
         rowner: `💪🔥 *ACCESO DE MAESTRO* 🔥💪
 
 > Solo el *Sensei Supremo* puede usar esta técnica.
@@ -48,7 +48,15 @@ Ejemplo:
 > Este comando fue deshabilitado.
 
 ⚡ Sigue entrenando.`
-    }[type];
+    }
 
-if (msg) return m.reply(msg).then(_ => m.react('💥'))
+    const msg = msgs[type]
+    if (!msg) return
+
+    // Usar conn.sendMessage en vez de m.react para evitar errores
+    if (conn && m.chat) {
+        conn.sendMessage(m.chat, { text: msg })
+    } else if (m.reply) {
+        m.reply(msg)
+    }
 }
