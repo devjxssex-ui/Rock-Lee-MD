@@ -1,57 +1,82 @@
-import yts from 'yt-search';
+import yts from 'yt-search'
 
 const handler = async (m, { conn, text, usedPrefix, command }) => {
-  if (!text) {
-    throw `❗ Por favor ingresa un texto para buscar.\nEjemplo: ${usedPrefix + command} Nombre del video`;
-  }
+  try {
+    if (!text) {
+      throw `❗ Ingresa algo para buscar\nEjemplo:\n${usedPrefix + command} bad bunny`
+    }
 
-  const search = await yts(text);
-  const videoInfo = search.all?.[0];
+    await m.react?.('🔍')
 
-  if (!videoInfo) {
-    throw '❗ No se encontraron resultados para tu búsqueda. Intenta con otro título.';
-  }
+    const search = await yts(text)
+    const video = search.videos?.[0]
 
-  const body = `\`\`\`El mejor bot de WhatsApp ⚔️
-  
-Elige una de las opciones para descargar:
-🎧 *Audio* o 📽️ *Video*
-  `;
+    // ✔ mejor validación
+    if (!video) {
+      throw '❌ No encontré resultados'
+    }
 
-  await conn.sendMessage(
-    m.chat,
-    {
-      image: { url: videoInfo.thumbnail },
-      caption: body,
-      footer: `𝕭𝖑𝖆𝖈𝖐 𝕮𝖑𝖔𝖛𝖊𝖗 ☘︎| ⚔️🥷`,
-      buttons: [
-        { buttonId: `.ytmp3 ${videoInfo.url}`, buttonText: { displayText: '🎧 Audio' } },
-        { buttonId: `.ytmp4 ${videoInfo.url}`, buttonText: { displayText: '📽️ Video' } },
-        { buttonId: `.ytmp3doc ${videoInfo.url}`, buttonText: { displayText: '💿 audio doc' } },
-        { buttonId: `.ytmp4doc ${videoInfo.url}`, buttonText: { displayText: '🎥 vídeo doc' } },
-      ],
-      viewOnce: true,
-      headerType: 4,
-      contextInfo: {
-        externalAdReply: {
-          showAdAttribution: false,
-          title: '📡 Descargas clover',
-          body: '✡︎ Dev • TheCarlos',
-          mediaType: 2,
-          sourceUrl: global.redes || '',
-          thumbnail: global.icons || null
+    const caption = `╭━━〔 🎧 PLAY 〕━━⬣
+┃ 📌 *Título:* ${video.title}
+┃ ⏱ *Duración:* ${video.timestamp}
+┃ 👁 *Vistas:* ${video.views.toLocaleString()}
+┃ 📺 *Canal:* ${video.author.name}
+╰━━━━━━━━━━━━━━⬣
+
+✨ Elige formato para descargar:`
+
+    await conn.sendMessage(
+      m.chat,
+      {
+        image: { url: video.thumbnail },
+        caption,
+        footer: '✡︎ Black Clover MD • Devjxssex',
+        buttons: [
+          {
+            buttonId: `${usedPrefix}ytmp3 ${video.url}`,
+            buttonText: { displayText: '🎧 Audio' }
+          },
+          {
+            buttonId: `${usedPrefix}ytmp4 ${video.url}`,
+            buttonText: { displayText: '📽️ Video' }
+          },
+          {
+            buttonId: `${usedPrefix}ytmp3doc ${video.url}`,
+            buttonText: { displayText: '💿 Audio doc' }
+          },
+          {
+            buttonId: `${usedPrefix}ytmp4doc ${video.url}`,
+            buttonText: { displayText: '🎥 Video doc' }
+          }
+        ],
+        headerType: 4,
+        viewOnce: true,
+        contextInfo: {
+          externalAdReply: {
+            showAdAttribution: false,
+            title: video.title,
+            body: 'Descarga rápida ⚡',
+            mediaType: 2,
+            sourceUrl: video.url,
+            thumbnail: global.icons || null
+          }
         }
-      }
-    },
-    { quoted: m }
-  );
+      },
+      { quoted: m }
+    )
 
-  m.react('✅'); 
-};
+    await m.react?.('✅')
 
-handler.command = ['play', 'playvid', 'play2'];
-handler.tags = ['descargas'];
-handler.group = true;
-handler.limit = 6;
+  } catch (e) {
+    console.error('❌ Error play:', e)
+    await m.react?.('❌')
+    m.reply(typeof e === 'string' ? e : '⚠ Ocurrió un error en la búsqueda')
+  }
+}
 
-export default handler;
+handler.command = ['play', 'playvid', 'play2']
+handler.tags = ['descargas']
+handler.group = true
+handler.limit = 6
+
+export default handler
