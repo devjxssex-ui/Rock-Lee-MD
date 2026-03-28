@@ -1,61 +1,88 @@
-import fetch from 'node-fetch'
+import axios from 'axios'
 import { writeFileSync, unlinkSync } from 'fs'
 import { join } from 'path'
-import axios from 'axios'
-import Jimp from 'jimp'
-
-const name = "Descargas - black clover"
-
-async function resizeImage(buffer, size = 300) {
-  const img = await Jimp.read(buffer)
-  return img.resize(size, size).getBufferAsync(Jimp.MIME_JPEG)
-}
 
 const handler = async (m, { conn, text, usedPrefix, command }) => {
-  if (!text) return conn.reply(
-    m.chat,
-    `🚩 *Ingrese la URL de un repositorio de GitHub*\n\nEjemplo: ${usedPrefix + command} https://github.com/username/repo`,
-    m,
-    global.rcanal
-  )
+  const EMOJI = {
+    wait: '⏳',
+    ok: '✅',
+    error: '⚠️'
+  }
+
+  // 📌 Validación
+  if (!text) {
+    return conn.reply(
+      m.chat,
+      `🚩 Ingresa una URL de GitHub\n\nEjemplo:\n${usedPrefix + command} https://github.com/user/repo`,
+      m
+    )
+  }
+
+  // 🔍 Validar URL básica
+  if (!/github\.com\/.+\/.+/.test(text)) {
+    return conn.reply(
+      m.chat,
+      '⚠️ URL inválida. Asegúrate de que sea un repositorio de GitHub.',
+      m
+    )
+  }
 
   try {
-    await m.react(global.rwait)
+    await m.react(EMOJI.wait)
 
-    let repoUrl = text.trim()
-    if (!repoUrl.endsWith('/')) repoUrl += '/'
-    const zipUrl = repoUrl.replace('github.com', 'github.com') + 'archive/refs/heads/main.zip'
+    let repoUrl = text.trim().replace(/\/+$/, '')
+    const repoPath = repoUrl.split('github.com/')[1]
 
-    const response = await axios.get(zipUrl, { responseType: 'arraybuffer' })
-    const filePath = join('/tmp', 'repo.zip')
-    writeFileSync(filePath, response.data)
+    // 🎯 Intentar detectar rama (main / master)
+    let branch = 'main'
+    let zipUrl = `https://github.com/${repoPath}/archive/refs/heads/${branch}.zip`
 
-    await conn.sendFile(
+    try {
+      await axios.head(zipUrl)
+    } catch {
+      branch = 'master'
+      zipUrl = `https://github.com/${repoPath}/archive/refs/heads/${branch}.zip`
+    }
+
+    // 📥 Descargar repo
+    const res = await axios.get(zipUrl, { responseType: 'arraybuffer' })
+
+    const fileName = `${repoPath.replace('/', '_')}.zip`
+    const filePath = join('./', fileName)
+
+    writeFileSync(filePath, res.data)
+
+    // 🚀 Enviar archivo
+    await conn.sendMessage(
       m.chat,
-      filePath,
-      'repo.zip',
-      `📦 Aquí está tu repositorio clonado: ${repoUrl}`,
-      m
+      {
+        document: res.data,
+        fileName,
+        mimetype: 'application/zip',
+        caption: `📦 *Repositorio clonado*\n\n🔗 ${repoUrl}\n🌿 Rama: *${branch}*\n\n🩻 Rock Lee MD`
+      },
+      { quoted: m }
     )
 
     unlinkSync(filePath)
 
-    await m.react(global.done)
-  } catch (error) {
-    console.error(error)
-    await m.react(global.error)
-    conn.reply(
+    await m.react(EMOJI.ok)
+
+  } catch (err) {
+    console.error(err)
+
+    await m.react(EMOJI.error)
+
+    return conn.reply(
       m.chat,
-      '🚩 *No se pudo clonar el repositorio.* Verifica que la URL sea correcta.',
-      m,
-      global.fake
+      `⚠️ Error al clonar el repositorio.\n\n💡 Puede que:\n- No exista\n- Sea privado\n- No tenga rama main/master`,
+      m
     )
   }
 }
 
-handler.help = ['gitclone']
-handler.tags = ['buscador']
+handler.help = ['gitclone <url>']
+handler.tags = ['descargas']
 handler.command = ['gitclone']
-handler.register = true
 
 export default handler
