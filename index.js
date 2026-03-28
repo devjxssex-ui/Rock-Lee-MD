@@ -12,9 +12,11 @@ async function iniciarRockLee() {
     cfonts.say('ROCK LEE', { font: 'block', align: 'center', colors: ['green','white'] })
 }
 
+// Ejecuta solo si no existe el archivo de arranque
 if (!fs.existsSync('./.arranque-ok')) {
     await iniciarRockLee()
     fs.writeFileSync('./.arranque-ok', 'ROCKLEE_FINAL')
 }
 
-import('./start.js')
+// Importa start.js desde la carpeta núcleo•clover
+import('./núcleo•clover/start.js')
