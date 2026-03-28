@@ -1,28 +1,46 @@
+import { generateWAMessage, proto, areJidsSameUser } from '@whiskeysockets/baileys'
+
+// ⚡ Créditos:
+// 💻 Base: Rock Lee-MD
+// 🧠 Optimización: Devjxssex
+
 export async function all(m, chatUpdate) {
-    if (!m.message || !m.msg || !m.msg.fileSha256) return;
+  try {
+    if (!m?.message || !m?.msg?.fileSha256) return
 
-    const fileSha = Buffer.from(m.msg.fileSha256).toString('base64');
-    if (!(fileSha in global.db.data.sticker)) return;
+    // 🔑 obtener hash
+    const fileSha = Buffer.from(m.msg.fileSha256).toString('base64')
 
-    let hash = global.db.data.sticker[fileSha];
-    let { text, mentionedJid } = hash;
-    let messages = await generateWAMessage(m.chat, {
-        text: text,
-        mentions: mentionedJid
-    }, {
+    const data = global?.db?.data?.sticker?.[fileSha]
+    if (!data) return
+
+    const { text = '', mentionedJid = [] } = data
+
+    // ⚡ generar mensaje rápido
+    const msgGen = await generateWAMessage(
+      m.chat,
+      { text, mentions: mentionedJid },
+      {
         userJid: this.user.id,
-        quoted: m.quoted && m.quoted.fakeObj
-    });
+        quoted: m.quoted?.fakeObj
+      }
+    )
 
-    messages.key.fromMe = areJidsSameUser(m.sender, this.user.id);
-    messages.key.id = m.key.id;
-    messages.pushName = m.pushName;
-    if (m.isGroup) messages.participant = m.sender;
+    // ⚡ ajustar propiedades
+    msgGen.key.fromMe = areJidsSameUser(m.sender, this.user.id)
+    msgGen.key.id = m.key.id
+    msgGen.pushName = m.pushName
 
-    let msg = {
-        ...chatUpdate,
-        messages: [proto.WebMessageInfo.fromObject(messages)],
-        type: 'append'
-    };
-    this.ev.emit('messages.upsert', msg);
+    if (m.isGroup) msgGen.participant = m.sender
+
+    // ⚡ emitir mensaje
+    this.ev.emit('messages.upsert', {
+      ...chatUpdate,
+      messages: [proto.WebMessageInfo.fromObject(msgGen)],
+      type: 'append'
+    })
+
+  } catch (e) {
+    console.error('❌ Error cmdWithMedia:', e)
+  }
 }
