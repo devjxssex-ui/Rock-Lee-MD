@@ -1,33 +1,37 @@
-import './config.js'
-import { makeWASocket, protoType, serialize } from '../lib/simple.js'
-import { useMultiFileAuthState } from '@whiskeysockets/baileys'
-import NodeCache from 'node-cache'
+// start.js - ROCK LEE BOT (Termux Ready)
+import { join, dirname } from 'path'
+import { fileURLToPath } from 'url'
 import fs from 'fs'
 import chalk from 'chalk'
+import cfonts from 'cfonts'
 
-protoType()
-serialize()
+// Paths base
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
-global.sessions = 'rockleeSession'
+// Aseguramos global.opts para evitar errores
+global.opts = { legacy: false } // cambia a true si tu bot usa legacy sockets
 
-// Base de datos ya cargada en config.js
+// Función de inicio
+async function iniciarRockLee() {
+    console.clear()
+    console.log(chalk.green('💪🔥 ROCK LEE BOT INICIANDO 🔥💪'))
+    cfonts.say('ROCK LEE', { font: 'block', align: 'center', colors: ['green','white'] })
+}
 
-const { state, saveCreds } = await useMultiFileAuthState(global.sessions)
+// Crear archivo de arranque si no existe
+if (!fs.existsSync(join(__dirname, '.arranque-ok'))) {
+    await iniciarRockLee()
+    fs.writeFileSync(join(__dirname, '.arranque-ok'), 'ROCKLEE_FINAL')
+}
 
-global.conn = makeWASocket({
-    auth: {
-        creds: state.creds,
-        keys: state.keys
-    },
-    printQRInTerminal: true,
-    browser: ['RockLee-MD', 'Edge', '110.0.1587.56'],
-    markOnlineOnConnect: true
-})
+// Importar config.js
+import(join(__dirname, './núcleo•clover/config.js'))
 
-global.conn.ev.on('connection.update', update => {
-    const { connection } = update
-    if (connection === 'open') console.log(chalk.green('💪🔥 ROCK LEE BOT CONECTADO 🔥💪'))
-    if (connection === 'close') console.log(chalk.redBright('⚠︎ CONEXIÓN CERRADA'))
-})
+// Inicializar bot desde simple.js (o la función que uses)
+import { makeWASocket } from './lib/simple.js'
 
-global.conn.ev.on('creds.update', saveCreds)
+// Iniciar conexión principal
+const conn = makeWASocket(global.opts.legacy ? { legacy: true } : {})
+
+// Exportar conn para otros módulos si lo necesitas
+export { conn }
