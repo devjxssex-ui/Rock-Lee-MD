@@ -1,5 +1,5 @@
-//código creado x The Carlos 👑 
-//no quiten créditos 
+//⚡ código creado x The Carlos 👑 
+//⚠️ no quiten créditos o se activa el caos 🤘
 
 import { areJidsSameUser } from '@whiskeysockets/baileys'
 
@@ -16,6 +16,7 @@ export async function before(m, { participants, conn }) {
     const mainJid = mainConn.user.jid
     const thisJid = conn.user.jid
 
+    // 🤘 Si soy el bot principal, me quedo firme
     if (areJidsSameUser(mainJid, thisJid)) return
 
     async function getLidFromJid(id) {
@@ -37,6 +38,7 @@ export async function before(m, { participants, conn }) {
         ? participants
         : (groupMetadata?.participants || [])
 
+    // 🔍 Buscar si el bot principal ya está en el grupo
     const isBotPresent = list.some(p => {
         const pid = p?.id || p?.jid
         if (!pid) return false
@@ -53,7 +55,12 @@ export async function before(m, { participants, conn }) {
     try {
         await conn.reply(
             m.chat,
-            '✦ En este grupo está el bot principal, por lo tanto me saldré para evitar conflictos.',
+            `🤘⚡ *ANTI-SUBBOTS ACTIVADO* ⚡🤘
+
+🔥 Ya está el *bot principal* en el grupo  
+💀 Evitando conflictos entre máquinas...
+
+🚪 *Me retiro del campo de batalla...*`,
             m
         )
 
