@@ -1,4 +1,4 @@
-let linkRegex = /(https?:\/\/(?:www\.)?(?:t\.me|telegram\.me|whatsapp\.com)\/\S+)|(https?:\/\/chat\.whatsapp\.com\/\S+)|(https?:\/\/whatsapp\.com\/channel\/\S+)/i  
+const linkRegex = /(https?:\/\/(?:www\.)?(?:t\.me|telegram\.me|whatsapp\.com)\/\S+)|(https?:\/\/chat\.whatsapp\.com\/\S+)|(https?:\/\/whatsapp\.com\/channel\/\S+)/i  
 
 export async function before(m, { conn, isAdmin }) {
   if (m.isBaileys && m.fromMe) return true
@@ -6,43 +6,45 @@ export async function before(m, { conn, isAdmin }) {
 
   let chat = global.db.data.chats[m.chat]
   let settings = global.db.data.settings[conn.user.jid] || {}
-  let grupoBase = `https://chat.whatsapp.com`
-  let isGroupLink = linkRegex.exec(m.text)
 
-  if (!chat.antiLink || !m.text || !isGroupLink) return true
+  if (!chat.antiLink || !m.text) return true
 
-  let metadata
-  try {
-    metadata = await conn.groupMetadata(m.chat)
-  } catch (e) {
-    metadata = null
-  }
+  let isLink = linkRegex.test(m.text)
+  if (!isLink) return true
 
-  let participant = metadata?.participants?.find(p => (p.id || p.jid) === (m.sender || m.key?.participant))
+  let metadata = await conn.groupMetadata(m.chat).catch(() => null)
+  let participant = metadata?.participants?.find(p => 
+    (p.id || p.jid) === (m.sender || m.key?.participant)
+  )
 
-  if (participant?.admin === 'superadmin' && m.text.includes(grupoBase)) {
-    await conn.reply(m.chat, `⚔️ *Anti-Enlace activado, pero eres el creador del grupo (superadmin). Te salvaste.*`, m)
+  const groupLink = `https://chat.whatsapp.com/${await conn.groupInviteCode(m.chat)}`
+
+  // 🛡️ Dueño del grupo
+  if (participant?.admin === 'superadmin' && m.text.includes('chat.whatsapp.com')) {
+    await conn.reply(m.chat, `⚡ *ANTI-LINK ACTIVADO*\n\n👑 Eres el creador del grupo… puedes romper las reglas 😎`, m)
     return true
   }
 
+  // 🛡️ Admin
   if (isAdmin) {
-    await conn.reply(m.chat, `⚠️ *Eres admin, el sistema no te expulsará aunque compartas enlaces.*`, m)
+    await conn.reply(m.chat, `⚡ *ANTI-LINK*\n\n🛡️ Eres admin, no serás eliminado.`, m)
     return true
   }
 
-  const thisGroupLink = `https://chat.whatsapp.com/${await conn.groupInviteCode(m.chat)}`
-  if (m.text.includes(thisGroupLink)) return true
+  // 🔗 Link del mismo grupo
+  if (m.text.includes(groupLink)) return true
 
+  // 🚨 Usuario normal
   await conn.reply(
     m.chat,
-    `📎 *¡ALERTA DE ENLACE PROHIBIDO!*\n\n⚠️ *@${m.sender.split('@')[0]}* ha compartido un enlace sospechoso.\n💀 *Eliminación inminente...*`,
+    `🚨 *ANTI-LINK DETECTADO*\n\n⚠️ @${m.sender.split('@')[0]} rompió las reglas.\n💀 Eliminación en proceso...`,
     m,
     { mentions: [m.sender] }
   )
 
   if (settings.restrict) {
     try {
-      // eliminar mensaje del enlace
+      // eliminar mensaje
       await conn.sendMessage(m.chat, {
         delete: {
           remoteJid: m.chat,
@@ -52,12 +54,19 @@ export async function before(m, { conn, isAdmin }) {
         }
       })
 
+      // expulsar
       await conn.groupParticipantsUpdate(m.chat, [m.sender], 'remove')
+
     } catch (e) {
-      return conn.reply(m.chat, `🚫 *Error al intentar eliminar:* ${e}`, m)
+      return conn.reply(m.chat, `❌ *Error al ejecutar Anti-Link:* ${e}`, m)
     }
   } else {
-    await conn.reply(m.chat, `⚙️ *Restricción desactivada.* No puedo expulsar a @${m.sender.split('@')[0]}`, m, { mentions: [m.sender] })
+    await conn.reply(
+      m.chat,
+      `⚙️ *Modo restrict desactivado*\n\nNo puedo eliminar a @${m.sender.split('@')[0]}`,
+      m,
+      { mentions: [m.sender] }
+    )
   }
 
   return true
