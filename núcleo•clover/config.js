@@ -1,75 +1,57 @@
-import { watchFile, unwatchFile } from 'fs';
-import chalk from 'chalk';
-import { fileURLToPath } from 'url';
-import fs from 'fs'; 
-import cheerio from 'cheerio';
-import fetch from 'node-fetch';
-import axios from 'axios';
-import moment from 'moment-timezone';
+
+import { watchFile, unwatchFile } from 'fs'
+import chalk from 'chalk'
+import { fileURLToPath } from 'url'
+import fs from 'fs'
+import cheerio from 'cheerio'
+import fetch from 'node-fetch'
+import axios from 'axios'
+import moment from 'moment-timezone'
+import { Low, JSONFile } from 'lowdb'
 
 // 💪🔥 CONFIGURACIÓN ROCK LEE MD 🔥💪
 
-// Número del bot
-global.botNumber = ''; // Ej: 527753208329
+global.botNumber = ''
 
-// Dueños
 global.owner = [
   ['527751962946', '💪 Creador Rock Lee', true],
   ['', '', false]
-];
+]
 
-global.mods = ['527751962946'];
-global.prems = ['527751962946'];
+global.mods = ['527751962946']
+global.prems = ['527751962946']
 
-// Info del bot
-global.libreria = 'Baileys';
-global.baileys = 'V 6.7.9';
-global.languaje = 'Español';
-global.vs = '1.0.0';
-global.nameqr = '𝕽𝖔𝖈𝖐 𝕷𝖊𝖊';
-global.sessions = 'rockleeSession';
-global.jadi = 'rockleeJadiBot';
-global.blackJadibts = true;
+global.libreria = 'Baileys'
+global.baileys = 'V 6.7.9'
+global.languaje = 'Español'
+global.vs = '1.0.0'
+global.sessions = 'rockleeSession'
+global.jadi = 'rockleeJadiBot'
+global.blackJadibts = true
 
-// Stickers
-global.packsticker = `
-💪 ROCK LEE BOT
-EL PODER DE LA JUVENTUD 🔥`;
-
-global.packname = 'Rock Lee 💪🔥';
-global.author = 'Devjxssex';
+global.packsticker = `💪 ROCK LEE BOT\nEL PODER DE LA JUVENTUD 🔥`
+global.packname = 'Rock Lee 💪🔥'
+global.author = 'Devjxssex'
 
 // Branding
-global.wm = '𝕽𝖔𝖈𝖐 𝕷𝖊𝖊 ?';
-global.titulowm = '𝕽𝖔𝖈𝖐 𝕷𝖊𝖊 𝕸𝕯';
-global.botname = '𝕽𝖔𝖈𝖐 𝕷𝖊𝖊 🪾🔥';
-global.dev = 'Powered by esfuerzo puro 🔥';
-global.textbot = '𝕽𝖔𝖈𝖐 𝕷𝖊𝖊 𝕭𝖔𝖙';
-global.gt = '𝕽𝖔𝖈𝖐 𝕷𝖊𝖊 𝕸𝕯';
-global.namechannel = '. ₊ ⊹ ʀօƈӄ ʟɛɛ . ⟡ . օʄʄɨƈɨǟʟ ƈɦǟ̈̄ռռɛʟ . ݁₊ ⊹ . ݁ ⊹';
+global.wm = '𝕽𝖔𝖈𝖐 𝕷𝖊𝖊 ?'
+global.titulowm = '𝕽𝖔𝖈𝖐 𝕷𝖊𝖊 𝕸𝕯'
+global.botname = '𝕽𝖔𝖈𝖐 𝕷𝖊𝖊 🪾🔥'
+global.dev = 'Powered by esfuerzo puro 🔥'
+global.textbot = '𝕽𝖔𝖈𝖐 𝕷𝖊𝖊 𝕭𝖔𝖙'
 
-// Moneda
-global.monedas = 'energía';
-
-// Links (puedes cambiar)
-global.gp1 = 'https://chat.whatsapp.com/EndrcCsriueBIsd4r5RvLr?mode=gi_t';
-global.gp2 = 'https://chat.whatsapp.com/KqORPSx4EaEKy2vSGZ0803?mode=gi_t';
-global.comunidad1 = 'https://chat.whatsapp.com/FKDOZ6q46EY9Xo5PuvUYT4';
-global.channel = 'https://whatsapp.com/channel/0029VbCogMA4IBh8kqwcES2c';
-global.yt = 'https://youtube.com/';
-global.md = 'https://github.com/';
-global.correo = 'devjxssex@gmail.com';
-
-// Imagen catálogo
-global.catalogo = fs.readFileSync(new URL('../src/catalogo.jpg', import.meta.url));
-global.photoSity = [global.catalogo];
+// Archivos
+try {
+    global.catalogo = fs.readFileSync(new URL('../src/catalogo.jpg', import.meta.url))
+} catch(e) {
+    console.log(chalk.redBright('⚠️ catalogo.jpg no encontrado.'))
+    global.catalogo = null
+}
+global.photoSity = [global.catalogo]
 
 // Estilo mensajes
 global.estilo = { 
-  key: {  
-    fromMe: false, 
-    participant: '0@s.whatsapp.net', 
-  }, 
+  key: { fromMe: false, participant: '0@s.whatsapp.net' }, 
   message: { 
     orderMessage: { 
       itemCount : -999999, 
@@ -77,31 +59,33 @@ global.estilo = {
       surface : 1, 
       message: global.packname, 
       orderTitle: 'Rock Lee', 
-      thumbnail: global.catalogo, 
+      thumbnail: global.catalogo || undefined, 
       sellerJid: '0@s.whatsapp.net'
     }
   }
-};
+}
 
-// Canal
-global.ch = { ch1: "120363000000000000@newsletter" };
-global.rcanal = global.ch.ch1;
+// Base de datos
+global.db = new Low(new JSONFile('./src/database/database.json'))
+await global.db.read()
+global.db.data = global.db.data || { users: {}, chats: {}, stats: {}, msgs: {}, sticker: {}, settings: {} }
+global.db.chain = require('lodash').chain(global.db.data)
 
 // Librerías globales
-global.cheerio = cheerio;
-global.fs = fs;
-global.fetch = fetch;
-global.axios = axios;
-global.moment = moment;
+global.cheerio = cheerio
+global.fs = fs
+global.fetch = fetch
+global.axios = axios
+global.moment = moment
 
 // Sistema
-global.multiplier = 50;
-global.maxwarn = 3;
+global.multiplier = 50
+global.maxwarn = 3
 
 // Hot reload
-const file = fileURLToPath(import.meta.url);
+const file = fileURLToPath(import.meta.url)
 watchFile(file, () => {
-  unwatchFile(file);
-  console.log(chalk.redBright('Update config.js'));
-  import(`${file}?update=${Date.now()}`);
-});
+    unwatchFile(file)
+    console.log(chalk.redBright('Update config.js'))
+    import(`${file}?update=${Date.now()}`)
+})
