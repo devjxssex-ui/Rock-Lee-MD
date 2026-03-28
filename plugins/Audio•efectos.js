@@ -7,6 +7,7 @@ const handler = async (m, { conn, args, __dirname, usedPrefix, command }) => {
     const q = m.quoted ? m.quoted : m
     const mime = ((m.quoted ? m.quoted : m.msg).mimetype || '')
     let set
+
     if (/bass/.test(command)) set = '-af equalizer=f=94:width_type=o:width=2:g=30'
     if (/blown/.test(command)) set = '-af acrusher=.1:1:64:0:log'
     if (/deep/.test(command)) set = '-af atempo=4/4,asetrate=44500*2/3'
@@ -19,22 +20,37 @@ const handler = async (m, { conn, args, __dirname, usedPrefix, command }) => {
     if (/slow/.test(command)) set = '-filter:a "atempo=0.7,asetrate=44100"'
     if (/smooth/.test(command)) set = '-filter:v "minterpolate=\'mi_mode=mci:mc_mode=aobmc:vsbmc=1:fps=120\'"'
     if (/tupai|squirrel|chipmunk/.test(command)) set = '-filter:a "atempo=0.5,asetrate=65100"'
+
     if (/audio/.test(mime)) {
       const ran = getRandom('.mp3')
       const filename = join(__dirname, '../tmp/' + ran)
       const media = await q.download(true)
+
+      await conn.sendMessage(m.chat, {
+        text: `💪🔥 *MODIFICANDO AUDIO...* 🔥💪\n🥊 Aplicando técnica: *${command.toUpperCase()}*`
+      }, { quoted: m })
+
       exec(`ffmpeg -i ${media} ${set} ${filename}`, async (err, stderr, stdout) => {
         unlinkSync(media)
-        if (err) throw `_*Error!*_`
+        if (err) throw `💥 *¡FALLO EN EL ENTRENAMIENTO DE AUDIO!*`
+
         const buff = readFileSync(filename)
+
         await conn.sendMessage(m.chat, {
           audio: buff,
           mimetype: 'audio/mpeg',
           ptt: true
         }, { quoted: m })
+
+        await conn.sendMessage(m.chat, {
+          text: `⚡ *¡TÉCNICA COMPLETADA!* 💪\n🎧 Efecto aplicado: *${command}*\n🔥 *¡EL PODER DE LA JUVENTUD SE ESCUCHA!*`
+        }, { quoted: m })
+
         unlinkSync(filename)
       })
-    } else throw `> *𝚁𝙴𝚂𝙿𝙾𝙽𝙳𝙰 𝙰𝙻 𝙰𝚄𝙳𝙸𝙾 𝙾 𝙽𝙾𝚃𝙰 𝙳𝙴 𝚅𝙾𝚉 𝙴𝙻 𝙲𝚄𝙰𝙻 𝚂𝙴𝚁𝙰 𝙼𝙾𝙳𝙸𝙵𝙸𝙲𝙰𝙳𝙾, 𝚄𝚂𝙰𝙳𝙾 𝙴𝙻 𝙲𝙾𝙰𝙼𝙰𝙽𝙳𝙾 ${usedPrefix + command}*`
+
+    } else throw `💪🔥 *¡USA TU FUERZA CORRECTAMENTE!* 🔥💪\n\n🎧 Responde a un audio o nota de voz\n\nEjemplo:\n${usedPrefix + command}`
+    
   } catch (e) {
     throw e
   }
@@ -43,6 +59,7 @@ const handler = async (m, { conn, args, __dirname, usedPrefix, command }) => {
 handler.help = ['bass', 'blown', 'deep', 'earrape', 'fast', 'fat', 'nightcore', 'reverse', 'robot', 'slow', 'smooth', 'tupai'].map(v => v + ' [vn]')
 handler.tags = ['audio']
 handler.command = ['bass', 'blown', 'deep', 'earrape', 'nightcore', 'reverse', 'robot', 'slow', 'smooth', 'fat', 'tupai', 'squirrel', 'chipmunk']
+
 export default handler
 
 const getRandom = (ext) => {
