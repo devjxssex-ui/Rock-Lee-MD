@@ -5,7 +5,7 @@ import fetch from "node-fetch"
 import yts from "yt-search"
 import Jimp from "jimp"
 
-const NAME = "Descargas - Black Clover ⚔️"
+const NAME = "Descargas - Rock Lee ️"
 
 // 🖼️ Optimizar thumbnail
 async function resizeImage(buffer, size = 300) {
